@@ -9,29 +9,29 @@
 ![Current Chat Interface - single expert](https://via.placeholder.com/800x500.png?text=Empty+Chat+Interface+Preview)
 *Basic chat interface - placeholder for actual screenshot*
 
-## Why DeepseekR? 🧠
+## Why DeepseekR? 
 
-**Pushing MoE (Mixture-of-Experts) Architecture to New Frontiers**  
+🧠 **Pushing MoE (Mixture-of-Experts) Architecture to New Frontiers**  
 While Deepseek already utilizes MoE internally, DeepseekR enables:
 
 🔧 **Developer-Controlled Expert Orchestration**  
-   Create and manage specialized AI assistants with custom system messages
+Create and manage specialized AI assistants with custom system messages
 
-🤝 **Dynamic Expert Collaboration**
-   Let a reasoner agent moderate conversations between multiple experts
+🤝 **Dynamic Expert Collaboration**  
+Let a reasoner agent moderate conversations between multiple experts
 
 🌱 **Lightweight Foundation**  
    Simple Swift implementation focused on extensibility using baked-in libraries rather than complexity
 
 ## Current Alpha Features (2 Hours In! ⏳)
 
-- ✅ Basic chat completions interface
-- ✅ System message configuration
-- ✅ Deepseek-chat integration
-- ❌ Deepseek-reasoner implementation (coming soon)
-- ❌ Streaming (coming soon)
-- ❌ Expert moderation (coming soon)
-- ❌ Function calling (planned)
+✅ Basic chat completions interface  
+✅ System message configuration  
+✅ Deepseek-chat integration  
+❌ Deepseek-reasoner implementation (coming soon)  
+❌ Streaming (coming soon)  
+❌ Expert moderation (coming soon)  
+❌ Function calling (planned)  
 
 ## Developer Roadmap 🗺️
 
