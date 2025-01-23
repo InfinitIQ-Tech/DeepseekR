@@ -25,13 +25,13 @@ While Deepseek already utilizes MoE internally, DeepseekR enables:
 
 ## Current Alpha Features (2 Hours In! ⏳)
 
-✅ Basic chat completions interface
-✅ System message configuration
-✅ Deepseek-chat integration
-❌ Deepseek-reasoner implementation (coming soon)
-❌ Streaming (coming soon)
-❌ Expert moderation (coming soon)
-❌ Function calling (planned)
+- ✅ Basic chat completions interface
+- ✅ System message configuration
+- ✅ Deepseek-chat integration
+- ❌ Deepseek-reasoner implementation (coming soon)
+- ❌ Streaming (coming soon)
+- ❌ Expert moderation (coming soon)
+- ❌ Function calling (planned)
 
 ## Developer Roadmap 🗺️
 
