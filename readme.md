@@ -23,7 +23,7 @@ Let a reasoner agent moderate conversations between multiple experts
 🌱 **Lightweight Foundation**  
    Simple Swift implementation focused on extensibility using baked-in libraries rather than complexity
 
-## Current Alpha Features (2 Hours In! ⏳)
+## Current Alpha Features
 
 ✅ Basic chat completions interface  
 ✅ System message configuration  
