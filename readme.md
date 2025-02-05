@@ -28,8 +28,8 @@ Let a reasoner agent moderate conversations between multiple experts
 ✅ Basic chat completions interface  
 ✅ System message configuration  
 ✅ Deepseek-chat integration  
+✅ Streaming  
 ❌ Deepseek-reasoner implementation (coming soon)  
-❌ Streaming (coming soon)  
 ❌ Expert moderation (coming soon)  
 ❌ Function calling (planned)  
 
