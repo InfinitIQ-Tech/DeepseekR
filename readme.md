@@ -3,8 +3,10 @@
 **Experimental MoE-Powered Chat Interface for macOS, written in Swift**
 *Harnessing Mixture-of-Experts Architecture Through Conversational AI*
 
-[![Alpha Status](https://img.shields.io/badge/status-super_alpha-red)](https://github.com/InfinitIQ-Tech/DeepseekR)
+[![Alpha Status](https://img.shields.io/badge/status-alpha-yellow)](https://github.com/InfinitIQ-Tech/DeepseekR)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/InfinitIQ-Tech/DeepseekR/blob/main/license.md)
+
+<img width="900" height="515" alt="demo" src="https://github.com/user-attachments/assets/139505d0-5aee-435e-980c-113e9b372b1f" />
 
 ## Why DeepseekR? 
 
