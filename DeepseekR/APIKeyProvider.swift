@@ -28,7 +28,7 @@ enum APIKeyProvider {
     }
 
     /// Parses simple `KEY=VALUE` lines, ignoring blank lines and `#` comments.
-    private static func parse(_ contents: String) -> [String: String] {
+    static func parse(_ contents: String) -> [String: String] {
         var values: [String: String] = [:]
         for line in contents.split(separator: "\n") {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
