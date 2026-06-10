@@ -23,24 +23,27 @@ Let a reasoner agent moderate conversations between multiple experts
 🌱 **Lightweight Foundation**  
    Simple Swift implementation focused on extensibility using baked-in libraries rather than complexity
 
-## Current Alpha Features (2 Hours In! ⏳)
+## Current Alpha Features
 
 ✅ Basic chat completions interface  
 ✅ System message configuration  
-✅ Deepseek-chat integration  
-❌ Deepseek-reasoner implementation (coming soon)  
-❌ Streaming (coming soon)  
-❌ Expert moderation (coming soon)  
+✅ deepseek-v4-flash integration (thinking and non-thinking modes)  
+✅ Streaming (including chain-of-thought `reasoning_content`)  
+✅ Expert moderation — the Reasoner Core routes, consults experts in parallel, and synthesizes  
+✅ Modular expert configuration (create/edit/delete experts in-app, persisted between launches)  
+✅ Dynamic expert composition — the Reasoner assembles new experts when the roster has no fit  
 ❌ Function calling (planned)  
 
 ## Developer Roadmap 🗺️
 
 ### Immediate Goals
-- [ ] Chat with deepseek-reasoner implementation  
-- [ ] Basic streaming support  
-- [ ] Modular expert configuration  
+- [x] Chat with reasoning (thinking mode) implementation  
+- [x] Basic streaming support  
+- [x] Modular expert configuration  
+- [ ] Function calling  
+- [ ] Conversation persistence  
 
-### MoE Vision
+### MoE Vision — Implemented ✅
 ```mermaid
 graph TD
     User[User Input] --> Reasoner
@@ -50,20 +53,31 @@ graph TD
     Expert2 -->|Response| Reasoner
     Reasoner -->|Curated Output| User
 ```
-*Planned Expert Orchestration Flow*  
-- **Expert Pool**: Multiple Deepseek instances with specialized system prompts  
-- **Reasoner Core**: AI moderator handling expert selection and response synthesis  
-- **Dynamic Composition**: Automatic expert team assembly based on conversation needs  
+*Expert Orchestration Flow*  
+- **Expert Pool**: Multiple Deepseek instances with specialized system prompts — manage them via the **Experts…** button (`Expert.swift`, `ExpertManagementView.swift`)  
+- **Reasoner Core**: AI moderator handling expert selection and response synthesis (`MoEOrchestrator.swift` — routing uses guaranteed-JSON output, synthesis streams in thinking mode)  
+- **Dynamic Composition**: Automatic expert team assembly based on conversation needs — when no roster expert fits, the Reasoner writes a new expert's system prompt on the fly  
+
+### Using Expert Team mode
+1. Build & run, pick **Expert Team** in the mode picker (or **Single Expert** for classic direct chat).  
+2. Ask anything — the status line shows routing, each expert checking in, and the synthesized reply streaming.  
+3. Expand **Expert breakdown** under a reply to see who was consulted, what each was asked, and their raw answers.  
+
+## Build It Yourself 📘
+
+Want to understand every piece? [TUTORIAL.md](TUTORIAL.md) walks through building this exact app
+from scratch — including the concepts most developers haven't met yet (Server-Sent Events,
+`AsyncThrowingStream`, task groups, the App Sandbox, thinking mode, JSON output mode).
 
 ## Installation (Early Alpha)
 ```bash
 # Clone repository
 git clone https://github.com/InfinitIQ-Tech/DeepseekR.git
 
-# Open in Xcode 15+
+# Open in Xcode 16+
 open DeepseekR.xcodeproj
 
-# Build & Run (Requires macOS 14+)
+# Build & Run (Requires macOS 14.6+)
 ```
 
 ### API Key Setup
@@ -87,7 +101,8 @@ The `.env` file is gitignored, so your key never enters source control. Xcode co
 
 ### 🚢 Core Infrastructure
 - macOS native UI improvements
-- Secure credential storage
+- Keychain-based credential storage
+- Conversation persistence across launches
 
 ### 🧪 Research Directions
 - Expert specialization metrics  
@@ -95,7 +110,7 @@ The `.env` file is gitignored, so your key never enters source control. Xcode co
 - Failure recovery mechanisms  
 
 ## Disclaimer ⚠️
-This is an **EXTREMELY EARLY** experimental project (literally 2 hours old!). Expect:  
+This is an **EARLY** experimental project. Expect:  
 - 🔨 Breaking API changes (it's currently not a framework, just an app)
 - 🔥 Missing error handling
 - 📦 Basic UI implementation
