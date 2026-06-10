@@ -6,9 +6,6 @@
 [![Alpha Status](https://img.shields.io/badge/status-super_alpha-red)](https://github.com/InfinitIQ-Tech/DeepseekR)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/InfinitIQ-Tech/DeepseekR/blob/main/license.md)
 
-![Current Chat Interface - single expert](https://via.placeholder.com/800x500.png?text=Empty+Chat+Interface+Preview)
-*Basic chat interface - placeholder for actual screenshot*
-
 ## Why DeepseekR? 
 
 🧠 **Pushing MoE (Mixture-of-Experts) Architecture to New Frontiers**  
