@@ -152,14 +152,18 @@ class APIHandler: ObservableObject {
         case systemMessageMustBeFirst
         case noMessageReceivedFromAssistant
         case invalidHTTPResponse
+        case missingAPIKey
     }
 
-    private let apiKey = "sk-cd20ef406b6b4b10bc7b76f4f16bb048"
+    private lazy var apiKey: String? = APIKeyProvider.loadAPIKey()
     private let chatURL = URL(string: "https://api.deepseek.com/chat/completions")!
     private let networkService = NetworkService()
 
     private var bearerToken: String {
-        "Bearer \(apiKey)"
+        get throws {
+            guard let apiKey, !apiKey.isEmpty else { throw APIError.missingAPIKey }
+            return "Bearer \(apiKey)"
+        }
     }
 
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "DeepSeekAPI", category: "APIHandler")
@@ -199,7 +203,7 @@ class APIHandler: ObservableObject {
             url: chatURL,
             method: .post,
             headerTypes: [.authorization, .contentType, .accept],
-            headerValues: [.authorization(bearerToken), .json, .json]
+            headerValues: [.authorization(try bearerToken), .json, .json]
         )
         let chatBody = ChatRequest(messages: existingMessages, model: model, stream: stream)
         request = try networkService.encode(from: chatBody, request: request, convertToSnakeCase: true)
@@ -247,7 +251,7 @@ class APIHandler: ObservableObject {
                         url: chatURL,
                         method: .post,
                         headerTypes: [.authorization, .contentType, .accept],
-                        headerValues: [.authorization(bearerToken), .json, .json]
+                        headerValues: [.authorization(try bearerToken), .json, .json]
                     )
                     let chatBody = ChatRequest(messages: existingMessages, model: model, stream: true)
                     request = try networkService.encode(from: chatBody, request: request, convertToSnakeCase: true)

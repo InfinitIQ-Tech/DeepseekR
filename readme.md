@@ -66,7 +66,17 @@ open DeepseekR.xcodeproj
 # Build & Run (Requires macOS 14+)
 ```
 
-⚠️ **Note:** Currently requires manual API key configuration in `APIService.swift`. Apply for your API key at [https://platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys)
+### API Key Setup
+
+Apply for your API key at [https://platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys), then create a `.env` file in the `DeepseekR/` source folder:
+
+```bash
+echo 'DEEPSEEK_API_KEY=sk-your-key-here' > DeepseekR/.env
+```
+
+The `.env` file is gitignored, so your key never enters source control. Xcode copies it into the app bundle at build time, where the sandboxed app reads it on launch.
+
+⚠️ Because the key is baked into the built app, don't distribute your `.app` bundle.
 
 ## Contributing Opportunities 🤝
 
