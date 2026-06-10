@@ -4,6 +4,7 @@
 //
 //  Created by Kenneth Dubroff on 1/22/25.
 //  Updated on 2/04/25 to add streaming support with updated decoding.
+//  Updated on 6/09/26 for the deepseek-v4 models and MoE orchestration.
 //
 
 import Foundation
@@ -146,33 +147,22 @@ class NetworkService {
 
 // MARK: - APIHandler
 
+/// Conversation-stateful wrapper around `DeepSeekClient` for single-expert
+/// ("direct") chat. Expert-team conversations are driven by `MoEOrchestrator`.
 class APIHandler: ObservableObject {
 
     enum APIError: Swift.Error {
         case systemMessageMustBeFirst
-        case noMessageReceivedFromAssistant
-        case invalidHTTPResponse
-        case missingAPIKey
     }
 
-    private lazy var apiKey: String? = APIKeyProvider.loadAPIKey()
-    private let chatURL = URL(string: "https://api.deepseek.com/chat/completions")!
-    private let networkService = NetworkService()
-
-    private var bearerToken: String {
-        get throws {
-            guard let apiKey, !apiKey.isEmpty else { throw APIError.missingAPIKey }
-            return "Bearer \(apiKey)"
-        }
-    }
-
+    private let client: DeepSeekChatting
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "DeepSeekAPI", category: "APIHandler")
-
-    private static let shouldStream = false
 
     var existingMessages: [ChatMessage] = []
 
-    // MARK: - Non-Streaming API
+    init(client: DeepSeekChatting = DeepSeekClient()) {
+        self.client = client
+    }
 
     func createSystemMessage(_ content: String) throws -> DeepseekRChatMessage {
         guard existingMessages.isEmpty else { throw APIError.systemMessageMustBeFirst }
@@ -181,11 +171,13 @@ class APIHandler: ObservableObject {
         return DeepseekRChatMessage(content: systemMessage, warning: nil)
     }
 
+    // MARK: - Non-Streaming API
+
     func sendUserMessage(
         fromUser name: String? = nil,
-        for model: Model = .deepseek,
+        for model: Model = .flash,
         content: String,
-        stream: Bool = APIHandler.shouldStream
+        thinking: ThinkingConfig = .disabled
     ) async throws -> DeepseekRChatMessage {
         let chatMessage = ChatMessage(content: content, role: .user, name: name)
         existingMessages.append(chatMessage)
@@ -194,43 +186,26 @@ class APIHandler: ObservableObject {
             warning = "No system message was added. DeepseekR chat mode does better with a system message."
         }
 
-        let response = try await chat(withModel: model, stream: stream)
-        return DeepseekRChatMessage(content: response, warning: warning)
-    }
-
-    private func chat(withModel model: Model, stream: Bool) async throws -> ChatMessage {
-        var request = try networkService.createRequest(
-            url: chatURL,
-            method: .post,
-            headerTypes: [.authorization, .contentType, .accept],
-            headerValues: [.authorization(try bearerToken), .json, .json]
+        let reply = try await client.complete(
+            messages: existingMessages,
+            model: model,
+            thinking: thinking,
+            responseFormat: nil
         )
-        let chatBody = ChatRequest(messages: existingMessages, model: model, stream: stream)
-        request = try networkService.encode(from: chatBody, request: request, convertToSnakeCase: true)
-
-        logger.info("Sending non-streaming chat request for model: \(model.rawValue)")
-        let (data, response) = try await networkService.loadData(using: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            logger.error("Non-streaming request failed with status code: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
-            throw APIError.invalidHTTPResponse
-        }
-
-        logger.debug("Received non-streaming response: \(String(data: data, encoding: .utf8) ?? "No Data")")
-        let decodedResponse = try networkService.decode(ChatResponse.self, from: data)
-        guard let firstMessage = decodedResponse.choices.first?.message else {
-            throw APIError.noMessageReceivedFromAssistant
-        }
-        self.existingMessages.append(firstMessage)
-        return firstMessage
+        let assistantMessage = ChatMessage(content: reply.content, role: .assistant)
+        existingMessages.append(assistantMessage)
+        return DeepseekRChatMessage(content: assistantMessage, warning: warning)
     }
 
     // MARK: - Streaming API
 
     /// Sends a user message and returns an asynchronous stream of partial responses.
+    /// The full assistant reply joins the conversation history once the stream ends.
     func sendUserMessageStream(
         fromUser name: String? = nil,
-        for model: Model = .deepseek,
-        content: String
+        for model: Model = .flash,
+        content: String,
+        thinking: ThinkingConfig = .disabled
     ) -> AsyncThrowingStream<ChatMessage, Swift.Error> {
         let chatMessage = ChatMessage(content: content, role: .user, name: name)
         existingMessages.append(chatMessage)
@@ -239,79 +214,26 @@ class APIHandler: ObservableObject {
             logger.warning("No system message was added. DeepseekR chat mode does better with a system message.")
         }
 
-        return streamChat(withModel: model)
-    }
-
-    /// Updated streaming implementation using URLSession’s async bytes API and a streaming decoder.
-    private func streamChat(withModel model: Model) -> AsyncThrowingStream<ChatMessage, Swift.Error> {
-        AsyncThrowingStream { continuation in
-            Task {
+        let events = client.stream(messages: existingMessages, model: model, thinking: thinking)
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                var fullReply = ""
                 do {
-                    var request = try networkService.createRequest(
-                        url: chatURL,
-                        method: .post,
-                        headerTypes: [.authorization, .contentType, .accept],
-                        headerValues: [.authorization(try bearerToken), .json, .json]
-                    )
-                    let chatBody = ChatRequest(messages: existingMessages, model: model, stream: true)
-                    request = try networkService.encode(from: chatBody, request: request, convertToSnakeCase: true)
-
-                    logger.info("Starting streaming chat request for model: \(model.rawValue)")
-
-                    let (byteStream, response) = try await URLSession.shared.bytes(for: request)
-
-                    guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-                        logger.error("Streaming request failed with status code: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
-                        continuation.finish(throwing: APIError.invalidHTTPResponse)
-                        return
+                    for try await event in events {
+                        if case .content(let text) = event {
+                            fullReply += text
+                            continuation.yield(ChatMessage(content: text, role: .assistant))
+                        }
                     }
-
-                    // Process each incoming line from the byte stream.
-                    for try await line in byteStream.lines {
-                        let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                        // Skip empty lines.
-                        if trimmedLine.isEmpty { continue }
-
-                        // Handle termination signal.
-                        if trimmedLine == "[DONE]" {
-                            logger.info("Received [DONE] signal, finishing stream.")
-                            break
-                        }
-
-                        // Handle keep-alive messages.
-                        if trimmedLine == ": keep-alive" || trimmedLine.lowercased().contains("keep-alive") {
-                            logger.debug("Received keep-alive signal, skipping.")
-                            continue
-                        }
-
-                        // Optionally, remove an optional "data:" prefix.
-                        var jsonLine = trimmedLine
-                        if jsonLine.hasPrefix("data:") {
-                            jsonLine = String(jsonLine.dropFirst("data:".count)).trimmingCharacters(in: .whitespaces)
-                        }
-
-                        guard let data = jsonLine.data(using: .utf8) else { continue }
-
-                        do {
-                            let streamingResponse = try JSONDecoder().decode(StreamingChatResponse.self, from: data)
-                            if let delta = streamingResponse.choices.first?.delta,
-                               let text = delta.content, !text.isEmpty {
-                                logger.debug("Yielding partial message: \(text)")
-                                let message = ChatMessage(content: text, role: .assistant)
-                                continuation.yield(message)
-                            }
-                        } catch {
-                            logger.error("Failed to decode chunk: \(error.localizedDescription)")
-                            // Optionally log the line causing the error:
-                            logger.debug("Error decoding line: \(jsonLine)")
-                        }
+                    if !fullReply.isEmpty {
+                        self.existingMessages.append(ChatMessage(content: fullReply, role: .assistant))
                     }
                     continuation.finish()
                 } catch {
-                    logger.error("Streaming request failed: \(error.localizedDescription))")
                     continuation.finish(throwing: error)
                 }
             }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 }
@@ -325,8 +247,8 @@ enum MessageSourceType: String, Codable {
 }
 
 enum Model: String, Codable {
-    case deepseek = "deepseek-chat"
-    case reasoner = "deepseek-reasoner"
+    case flash = "deepseek-v4-flash"
+    case pro = "deepseek-v4-pro"
 }
 
 struct DeepseekRChatMessage: Identifiable {
@@ -335,7 +257,7 @@ struct DeepseekRChatMessage: Identifiable {
     let warning: String?
 }
 
-struct ChatMessage: Codable {
+struct ChatMessage: Codable, Equatable {
     var content: String
     let role: MessageSourceType
     var name: String? = nil
@@ -345,38 +267,6 @@ struct ChatRequest: Encodable {
     let messages: [ChatMessage]
     let model: Model
     let stream: Bool
-}
-
-/// The full-response model (non-streaming)
-struct ChatResponse: Decodable {
-    let id: String
-    let created: Date
-    let model: String
-    let choices: [ChoiceMessage]
-}
-
-struct ChoiceMessage: Decodable {
-    let index: Int
-    let message: ChatMessage
-}
-
-/// MARK: - Streaming Models
-
-/// Model for streaming responses (chunks use "delta" instead of "message")
-struct StreamingChatResponse: Decodable {
-    let id: String
-    let created: Int
-    let model: String
-    let choices: [StreamingChoice]
-}
-
-struct StreamingChoice: Decodable {
-    let index: Int
-    let delta: Delta?
-    let finish_reason: String?
-
-    struct Delta: Decodable {
-        let role: MessageSourceType?
-        let content: String?
-    }
+    var thinking: ThinkingConfig? = nil
+    var responseFormat: ResponseFormat? = nil
 }
